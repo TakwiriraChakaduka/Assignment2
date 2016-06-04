@@ -117,12 +117,13 @@ class SelectableGrid(CompoundSelectionBehavior, GridLayout):
 
     def do_touch(self, instance, touch):
         if ('button' in touch.profile and touch.button in
-            ('scrollup', 'scrolldown', 'scrollleft', 'scrollright')) or\
-            instance.collide_point(*touch.pos):
+            ('scrollup', 'scrolldown', 'scrollleft', 'scrollright')) or \
+                instance.collide_point(*touch.pos):
             self.select_with_touch(instance, touch)
         else:
             return False
         return True
+
 
 class MainWindow(App):
 
@@ -135,10 +136,12 @@ class MainWindow(App):
         description = []
         total_price = 0
         self.selection = []
+        self.selection_with_idx = {}
 
         for node in grid.selected_nodes:
            record = self.storage.items[node.storage_idx]
            self.selection.append(record)
+           self.selection_with_idx[node.storage_idx] = record
 
         for record in self.selection:
            price = record[-2]
@@ -156,17 +159,39 @@ class MainWindow(App):
     def list_items(self,*args):
         self.main_label.text = "Choose action from the left menu, then choose items on the right "
 
-    def hire_items(self,*args):
-        print(args)
-        pass
+    def hire_items(self, *args):
+        ## This will hire items for the current selection, only if the
+        ## items to be hired are not alraedy rented out, otherwise it doesn't
+        ## work
+        for record in self.selection:
+            if record[-1] == 'out':
+                self.main_label.text = "You are trying to hire an already hired \
+                    equipment. Please return it first!"
+                return False
+
+        self.selected_functions.append('hire')
+        self.main_label.text = "Please click Confirm to hire!"
+        return True
 
     def return_items(self,*args):
         print(args)
         pass
 
     def confirm(self,*args):
-        print(args)
-        pass
+        ## Check if selected_functions is selected
+        if len(self.selected_functions) == 0:
+            self.main_label.text = "Confirm won't work! Fix your choices"
+            return False
+
+        ## If hire is being selected - then we set hired to all items in the file
+        if 'hire' in self.selected_functions:
+            for key, record in self.selection_with_idx.items():
+                #print key, record
+                self.storage.items[key][-1] = 'out'
+            self.storage.save()
+            self.main_label.text = "Your items have been hired!"
+            self.build()
+            return True
 
     def add_new_item(self,*args):
         self.sm.transition.direction = 'left'
@@ -176,7 +201,7 @@ class MainWindow(App):
         main_layout = BoxLayout(padding=5, orientation='vertical')
         group_layout = BoxLayout(padding=5)
         actions = {
-            'List items': self.list_items,
+            'List items':self.list_items,
             'Hire items':self.hire_items,
             "Return Items":self.return_items,
             "Confirm":self.confirm,
@@ -199,6 +224,7 @@ class MainWindow(App):
 
         layout = SelectableGrid(cols=2, up_count=5, multiselect=True, scroll_count=1)
         for idx, item in self.storage.items.items():
+            print(idx)
             category, name, cost, state = item
             btn = Button(text=name,
                          background_color=color_for_state(state))
@@ -214,9 +240,8 @@ class MainWindow(App):
         main_layout.add_widget(group_layout)
 
         self.main_label = Label(text="loading...", size_hint_y=None, height=50)
-
+        self.selected_functions = []
         main_layout.add_widget(self.main_label)
-
 
         return main_layout
 
