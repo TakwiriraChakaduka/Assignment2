@@ -18,7 +18,7 @@ from kivy.uix.behaviors import CompoundSelectionBehavior
 
 from kivy.properties import StringProperty, ObjectProperty
 
-from main import *
+from itemlist import ItemList
 
 
 red = [1, 0, 0, 1]
@@ -55,7 +55,7 @@ class AddItemScreen(Screen):
             self.ids.status.text = "missing description"
             return
 
-        self.storage.add_item(self.ids.item_name.text, self.ids.description.text, self.ids.price.text)
+        self.items.add_item(self.ids.item_name.text, self.ids.description.text, self.ids.price.text)
         self.ids.status.text = "item "+self.ids.item_name.text + " added"
 
         self.ids.item_name.text = ""
@@ -110,8 +110,8 @@ class SelectableGrid(CompoundSelectionBehavior, GridLayout):
 
     def deselect_node(self, node):
 
-        record = self.storage.items[node.storage_idx]
-        state = record[-1]
+        record = self.items.items[node.storage_idx]
+        state = record.status
         node.background_color = color_for_state(state)
         super(SelectableGrid, self).deselect_node(node)
 
@@ -139,15 +139,14 @@ class MainWindow(App):
         self.selection_with_idx = {}
 
         for node in grid.selected_nodes:
-           record = self.storage.items[node.storage_idx]
+           record = self.items.items[node.storage_idx]
            self.selection.append(record)
            self.selection_with_idx[node.storage_idx] = record
 
         for record in self.selection:
-           price = record[-2]
-           name = record[1]
+           price = record.price
+           name = record.name
 
-           print(price)
            total_price += float(price)
            description.append(name)
 
@@ -161,18 +160,13 @@ class MainWindow(App):
 
     def hire_items(self, *args):
         inst = args[0]
-        print(inst.text)
         ## This will hire items for the current selection, only if the
         ## items to be hired are not alraedy rented out, otherwise it doesn't
         ## work
         for record in self.selection:
-            print('-record')
-            print(record[-1])
-            if record[-1] == 'out':
-                print('im in the main label part')
+            if record.status == 'out':
                 self.main_label.text = "You are trying to hire an already hired equipment. Please return it first!"
                 self.selection_with_idx = {}
-                print ('im below label')
                 return True
 
         self.main_label.text = "Please click Confirm to hire!"
@@ -180,7 +174,7 @@ class MainWindow(App):
 
     def return_items(self,*args):
         for record in self.selection:
-            if record[-1] == 'in':
+            if record.status == 'in':
                 self.main_label.text = "You are trying to return a non-hired equipment. Please check your selections!"
                 self.selection_with_idx = {}
                 return False
@@ -190,6 +184,7 @@ class MainWindow(App):
 
     def confirm(self,*args):
         ## Check if selected_functions is selected
+        products = []
         if len(self.selection_with_idx) == 0:
             self.main_label.text = "Confirm won't work! Fix your choices"
             return False
@@ -197,17 +192,19 @@ class MainWindow(App):
         ## If hire is being selected - then we set hired to all items in the file
         for key, record in self.selection_with_idx.items():
             #print key, record
-            if self.storage.items[key][-1]=='in':
-                self.storage.items[key][-1] = 'out'
-                out_message = 'Items Hired'
+            if self.items.items[key].status=='in':
+                self.items.items[key].status = 'out'
+                products.append(self.items.items[key].name)
+                out_message = ' Items Hired'
 
             else:
-                self.storage.items[key][-1] = 'in'
-                out_message = 'Items Returned'
+                self.items.items[key].status = 'in'
+                products.append(self.items.items[key].name)
+                out_message = ' Items Returned'
 
 
-        self.storage.save()
-        self.main_label.text = out_message
+        self.items.save()
+        self.main_label.text = ','.join(products) + out_message
         return True
 
     def add_new_item(self,*args):
@@ -225,7 +222,7 @@ class MainWindow(App):
             "Add New Item":self.add_new_item
         }
 
-        items = load()
+        items = self.items.load()
 
         colors = [red, green, blue, purple]
 
@@ -240,17 +237,17 @@ class MainWindow(App):
         items = list(items.values())
 
         layout = SelectableGrid(cols=2, up_count=5, multiselect=True, scroll_count=1)
-        for idx, item in self.storage.items.items():
+        for idx, item in self.items.items.items():
             #print(idx)
-            category, name, cost, state = item
-            btn = Button(text=name,
-                         background_color=color_for_state(state))
+         #   category, name, cost, state = item
+            btn = Button(text=item.name,
+                         background_color=color_for_state(item.status))
             btn.bind(on_touch_down=layout.do_touch)
             btn.storage_idx = idx
 
             layout.add_widget(btn)
         layout.bind(selected_nodes=self.set_selection)
-        layout.storage = self.storage
+        layout.items = self.items
 
         group_layout.add_widget(layout)
 
@@ -263,8 +260,8 @@ class MainWindow(App):
         return main_layout
 
     def build(self):
-        self.storage = Storage('items.csv')
-        self.storage.load()
+        self.items = ItemList('items.csv')
+        self.items.load()
         # print('im building again')
         self.main = MainScreen(name='main')
 
@@ -273,7 +270,7 @@ class MainWindow(App):
         sm.add_widget(self.main)
 
         self.add_item_screen = AddItemScreen(name='add_item')
-        self.add_item_screen.storage = self.storage
+        self.add_item_screen.items = self.items
 
         sm.add_widget(self.add_item_screen)
 
