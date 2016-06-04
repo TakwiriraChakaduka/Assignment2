@@ -199,11 +199,15 @@ class MainWindow(App):
             #print key, record
             if self.storage.items[key][-1]=='in':
                 self.storage.items[key][-1] = 'out'
+                out_message = 'Items Hired'
+
             else:
                 self.storage.items[key][-1] = 'in'
+                out_message = 'Items Returned'
+
 
         self.storage.save()
-        self.main_label.text = "Job Done!"
+        self.main_label.text = out_message
         return True
 
     def add_new_item(self,*args):
