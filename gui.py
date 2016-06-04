@@ -160,38 +160,51 @@ class MainWindow(App):
         self.main_label.text = "Choose action from the left menu, then choose items on the right "
 
     def hire_items(self, *args):
+        inst = args[0]
+        print(inst.text)
         ## This will hire items for the current selection, only if the
         ## items to be hired are not alraedy rented out, otherwise it doesn't
         ## work
         for record in self.selection:
+            print('-record')
+            print(record[-1])
             if record[-1] == 'out':
-                self.main_label.text = "You are trying to hire an already hired \
-                    equipment. Please return it first!"
-                return False
+                print('im in the main label part')
+                self.main_label.text = "You are trying to hire an already hired equipment. Please return it first!"
+                self.selection_with_idx = {}
+                print ('im below label')
+                return True
 
-        self.selected_functions.append('hire')
         self.main_label.text = "Please click Confirm to hire!"
         return True
 
     def return_items(self,*args):
-        print(args)
-        pass
+        for record in self.selection:
+            if record[-1] == 'in':
+                self.main_label.text = "You are trying to return a non-hired equipment. Please check your selections!"
+                self.selection_with_idx = {}
+                return False
+
+        self.main_label.text = "Please click to Confirm to return!"
+        return True
 
     def confirm(self,*args):
         ## Check if selected_functions is selected
-        if len(self.selected_functions) == 0:
+        if len(self.selection_with_idx) == 0:
             self.main_label.text = "Confirm won't work! Fix your choices"
             return False
 
         ## If hire is being selected - then we set hired to all items in the file
-        if 'hire' in self.selected_functions:
-            for key, record in self.selection_with_idx.items():
-                #print key, record
+        for key, record in self.selection_with_idx.items():
+            #print key, record
+            if self.storage.items[key][-1]=='in':
                 self.storage.items[key][-1] = 'out'
-            self.storage.save()
-            self.main_label.text = "Your items have been hired!"
-            self.build()
-            return True
+            else:
+                self.storage.items[key][-1] = 'in'
+
+        self.storage.save()
+        self.main_label.text = "Job Done!"
+        return True
 
     def add_new_item(self,*args):
         self.sm.transition.direction = 'left'
@@ -224,7 +237,7 @@ class MainWindow(App):
 
         layout = SelectableGrid(cols=2, up_count=5, multiselect=True, scroll_count=1)
         for idx, item in self.storage.items.items():
-            print(idx)
+            #print(idx)
             category, name, cost, state = item
             btn = Button(text=name,
                          background_color=color_for_state(state))
@@ -248,7 +261,7 @@ class MainWindow(App):
     def build(self):
         self.storage = Storage('items.csv')
         self.storage.load()
-
+        # print('im building again')
         self.main = MainScreen(name='main')
 
         self.main.add_widget(self.build_main())
