@@ -160,9 +160,7 @@ class MainWindow(App):
 
     def hire_items(self, *args):
         inst = args[0]
-        ## This will hire items for the current selection, only if the
-        ## items to be hired are not alraedy rented out, otherwise it doesn't
-        ## work
+        ## This will hire items for the current selection
         for record in self.selection:
             if record.status == 'out':
                 self.main_label.text = "You are trying to hire an already hired equipment. Please return it first!"
@@ -262,7 +260,7 @@ class MainWindow(App):
     def build(self):
         self.items = ItemList('items.csv')
         self.items.load()
-        # print('im building again')
+
         self.main = MainScreen(name='main')
 
         self.main.add_widget(self.build_main())
